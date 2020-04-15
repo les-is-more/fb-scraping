@@ -1,7 +1,11 @@
+#!/usr/local/bin/python3 python3
+
+
 import argparse
 import time
 import json
 import csv
+import io
 
 from datetime import datetime
 
@@ -15,6 +19,8 @@ def _extract_html(bs_data):
     postBigDict = list()
 
     for item in k:
+        # Post ID
+        item.find_all(attrs={"data-ft"})
 
         # Post Text        
         actualPosts = item.find_all(attrs={"data-testid": "post_message"})
@@ -27,30 +33,28 @@ def _extract_html(bs_data):
                 for index in range(0, len(paragraphs)):
                     text += paragraphs[index].text
 
-                postDict['Post'] = text
+                postDict["Post"] = text
 
         else:
-            postDict['Post'] = ""
+            postDict["Post"] = ""
 
         # Links
         postLinks = item.find(class_="_5pcq")            
         if postLinks is not None:
-            postDict['Link'] =  "https://web.facebook.com/" + postLinks.get('href')
+            postDict["Link"] =  "https://web.facebook.com/" + postLinks.get('href')
 
 
         # Content Date
         postLinks = item.find(class_="_5ptz")            
         if postLinks is not None:
             utc_dt = int(postLinks.get('data-utime'))
-            postDict['content_date'] = datetime.utcfromtimestamp(utc_dt).strftime('%Y-%m-%d %H:%M:%S') 
-
+            postDict["content_date"] = datetime.utcfromtimestamp(utc_dt).strftime('%Y-%m-%d %H:%M:%S') 
 
         # Images
-
         postPictures = item.find_all(class_="scaledImageFitWidth img")
-        postDict['Image'] = ""
+        postDict["Image"] = ""
         for postPicture in postPictures:
-            postDict['Image'] = postPicture.get('src')
+            postDict["Image"] = "\"" + postPicture.get('src') + "\""
 
 
         # Reactions
@@ -173,7 +177,7 @@ def extract(page, numOfPost, infinite_scroll=False, scrape_comment=False):
         "profile.default_content_setting_values.notifications": 1
     })
 
-    browser = webdriver.Chrome(executable_path=r"C:\Users\PHLLCA\Documents\FOR INSTALLATION_to_delete\chromedriver.exe", options=option)
+    browser = webdriver.Chrome(executable_path=r'/Users/apple/Documents/Work/FB scraper/chromedriver', options=option)
     browser.get("https://facebook.com")
     browser.maximize_window()
     browser.find_element_by_name("email").send_keys(email)
@@ -281,21 +285,22 @@ if __name__ == "__main__":
 
     postBigDict = extract(page=args.page, numOfPost=args.len, infinite_scroll=infinite, scrape_comment=scrape_comment)
 
+    print("Saving for {}".format(args.page))
     if args.usage == "WT":
-        with open('output.txt', 'w', encoding="utf-8") as file:
+        with open('output.txt', 'w+') as file:
             for post in postBigDict:
                 file.write(json.dumps(post))  # use json load to recover
 
     elif args.usage == "CSV":
-        with open(args.page + 'data.csv', 'w', encoding="utf-8", newline = '') as csvfile:
+        with open('./data/' + args.page + 'data.csv', 'w', newline='', encoding='utf-8') as csvfile:
            writer = csv.writer(csvfile)
-           writer.writerow(['Post', 'Link','Posting Date', 'Image','Reactions', 'Comments', 'Shares'])
+        #   writer.writerow(['Page Source','Post', 'Link','Posting Date', 'Image','Reactions', 'Comments', 'Shares'])
 
            for post in postBigDict:
-              writer.writerow([post['Post'], post['Link'],post['content_date'],post['Image'],post['Reactions'], post['Comments'], post['Shares']])
+              writer.writerow([args.page, post['Post'], post['Link'], post['content_date'], post['Image'], post['Reactions'], post['Comments'], post['Shares']])
 
     else:
         for post in postBigDict:
             print("\n")
-
+       
     print("Finished")
